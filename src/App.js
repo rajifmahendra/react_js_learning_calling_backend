@@ -1,4 +1,8 @@
 import React, {Component} from "react";
+import { ToastContainer } from "react-toastify";
+import http from './Services/HttpService';
+import config from "./config.json";
+import "react-toastify/dist/ReactToastify.css";
 import './App.css';
 
 class App extends Component {
@@ -6,25 +10,55 @@ class App extends Component {
     posts: []
   };
 
-  handleAdd = () => {
-    console.log("Add");
+  async componentDidMount() {
+    // pending > resolved (success) OR rejected (failure)
+    const { data : posts } = await http.get(config.apiEndpoint);
+    this.setState({ posts });
+    // console.log(posts)
   }
 
-  handleUpdate = post => {
-    console.log("Update", post);
+  handleAdd = async () => {
+    const obj = { title: "a", body: "b" };
+    const { data: post } = await http.post(config.apiEndpoint, obj);
+    // console.log(post)
+    const posts = [post, ...this.state.posts]
+    this.setState({ posts })
   }
 
-  handleDelete = post => {
-    console.log("Delete", post);
+  handleUpdate = async post => {
+    post.title = "UPDATED";
+    const { data } = await http.put(config.apiEndpoint + '/' + post.id, post);
+
+    const posts = [...this.state.posts];
+    const index = posts.indexOf(post);
+    posts[index] = {...post};
+    this.setState({ posts })
+    console.log(data)
+  }
+
+  handleDelete = async post => {
+    const originalPosts = this.state.posts;
+
+    const posts = this.state.posts.filter(p => p.id !== post.id);
+    this.setState({ posts });
+
+    try {
+      await http.delete("s" + config.apiEndpoint + "/" + post.id);
+    } catch (error) {
+      if (error.response && error.response.status === 404)
+        alert("This post has already been deleted.");
+      this.setState({ posts: originalPosts });
+    }
   }
 
   render() {
     return (
       <>
+      <ToastContainer />
         <button className="btn btn-primary" onClick={this.handleAdd}>
           Add
         </button>
-        <table class="table">
+        <table className="table">
           <thead>
             <tr>
               <th>Title</th>
@@ -33,7 +67,7 @@ class App extends Component {
             </tr>
           </thead>
           <tbody>
-            {this.state.posts.map(post => {
+            {this.state.posts.map(post => (
               <tr key={post.id}>
                 <td>{post.title}</td>
                 <td>
@@ -53,7 +87,7 @@ class App extends Component {
                   </button>
                 </td>
             </tr>
-            })}
+            ))}
           </tbody>
         </table>
       </>
